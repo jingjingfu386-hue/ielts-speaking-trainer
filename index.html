@@ -36,7 +36,7 @@ audio{width:100%;margin-top:10px}
  .cn,.en{font-size:18px}.dailyitem{grid-template-columns:68px 1fr}.dailyitem button{grid-column:1/3;width:100%}.tab{font-size:13px;padding:8px 10px}
  .stickyNav{top:0}.time{font-size:34px}
 }
-details.fullref{margin-top:12px;border:1px solid var(--line);border-radius:11px;background:#fbfdfe;padding:10px 12px}details.fullref summary{cursor:pointer;font-weight:700;color:#245a6f}.fullpassage{margin-top:10px;font-size:17px;line-height:1.85;color:#184c68}</style>
+details.fullref{margin-top:12px;border:1px solid var(--line);border-radius:11px;background:#fbfdfe;padding:10px 12px}details.fullref summary{cursor:pointer;font-weight:700;color:#245a6f}.fullpassage{margin-top:10px;font-size:17px;line-height:1.85;color:#184c68}.sentenceList{display:flex;flex-direction:column;gap:9px;margin-top:8px}.sentcard{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:start;border:1px solid var(--line);background:#f8fbfc;border-radius:11px;padding:11px}.sentnum{width:28px;height:28px;border-radius:50%;background:#e5f0f4;color:#245a6f;font-weight:700;text-align:center;line-height:28px}.senttext{font-size:18px;line-height:1.72;color:#184c68}.speakmini{padding:7px 10px;white-space:nowrap}@media(max-width:720px){.sentcard{grid-template-columns:30px 1fr}.speakmini{grid-column:2/3;width:max-content}.senttext{font-size:17px}}</style>
 </head>
 <body>
 <main>
@@ -253,20 +253,24 @@ function load(){
 function draw(){
  var e=baseDataset()[selected];if(!e)return;
  if(tab==='islands'){
-   $('cn').classList.remove('hide');$('en').classList.remove('hide');$('show').disabled=false;
-   $('say').textContent='朗读当前句';$('all').textContent='整篇连读';
+   $('cn').classList.add('hide');$('en').classList.add('hide');
+   $('show').disabled=true;$('prev').disabled=true;$('next').disabled=true;$('say').disabled=true;
+   $('show').textContent='逐句英文已全部显示';$('say').textContent='逐句请点右侧朗读';$('all').textContent='整篇连读';$('all').disabled=false;
    var html='<div class="quick">';
    e.nodes.forEach(function(n,i){html+='<div class="card"><span class="tag">节点 '+(i+1)+'</span><div>'+esc(n)+'</div></div>'});
    html+='</div>';
    if(e.logic)html+='<div class="node"><strong>中文逻辑：</strong>'+esc(e.logic)+'</div>';
    html+='<div class="chunks"><strong>主力句块（不是让你额外背一套）</strong><br>'+esc(e.chunks||'')+'</div>';
-   html+='<details class="fullref"><summary>展开完整参考素材（'+(e.sentences||[]).length+'句）</summary><div class="fullpassage">'+esc(e.fullText||'')+'</div></details>';
+   html+='<h3>逐句跟读｜全部显示</h3><p class="muted">每一句都可以单独点“朗读”，适合先听发音和节奏，再自己跟读。</p>';
+   html+='<div class="sentenceList">';
+   (e.sentences||[]).forEach(function(s,i){
+     html+='<div class="sentcard"><div class="sentnum">'+(i+1)+'</div><div class="senttext">'+esc(s)+'</div><button class="speakmini" onclick="speakIslandSentence('+i+')">🔊 朗读</button></div>';
+   });
+   html+='</div>';
+   html+='<details class="fullref"><summary>展开整篇连续文本</summary><div class="fullpassage">'+esc(e.fullText||'')+'</div></details>';
    if(e.boundary)html+='<p class="warn"><strong>事实边界：</strong>'+esc(e.boundary)+'</p>';
    $('islandBox').innerHTML=html;$('islandBox').classList.remove('hide');
-   if(!lines.length){$('count').textContent='完整素材暂无逐句拆分';$('cn').textContent='';$('en').textContent='';$('prev').disabled=true;$('next').disabled=true;return}
-   var pair=lines[pos];$('cn').textContent=pair[0];$('en').textContent=pair[1];$('en').classList.toggle('hide',!show);
-   $('show').textContent=show?'隐藏当前英文':'显示当前英文';$('count').textContent=(pos+1)+' / '+lines.length;
-   $('prev').disabled=pos===0;$('next').disabled=pos===lines.length-1;$('say').disabled=false;$('all').disabled=false;
+   $('count').textContent='节点 '+e.nodes.length+' 个｜完整素材 '+(e.sentences||[]).length+' 句';
    return;
  }
  $('islandBox').classList.add('hide');$('cn').classList.remove('hide');$('en').classList.remove('hide');$('show').disabled=false;
@@ -299,6 +303,16 @@ function speak(all){
   u.voice=voices.find(function(v){return v.voiceURI===$('voice').value})||voices.find(function(v){return v.lang==='en-GB'})||voices.find(function(v){return v.lang.toLowerCase().indexOf('en')===0})||null;
   u.onend=function(){if(token===ttsQueue)setTimeout(play,all?250:0)};speechSynthesis.speak(u)
  }play();
+}
+function speakIslandSentence(i){
+ if(tab!=='islands')return;
+ var e=baseDataset()[selected],text=(e.sentences||[])[i];
+ if(!text||!('speechSynthesis'in window))return;
+ stopSpeak();
+ var voices=speechSynthesis.getVoices(),u=new SpeechSynthesisUtterance(text);
+ u.lang='en-GB';u.rate=+$('speed').value;u.pitch=1;
+ u.voice=voices.find(function(v){return v.voiceURI===$('voice').value})||voices.find(function(v){return v.lang==='en-GB'})||voices.find(function(v){return v.lang.toLowerCase().indexOf('en')===0})||null;
+ speechSynthesis.speak(u);
 }
 function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
 function targetSeconds(){if(tab==='p1')return 25;if(tab==='p3')return 45;if(tab==='p2'||tab==='islands')return 120;return 90}
